@@ -284,6 +284,32 @@ public final class WhoopBleClient: @unchecked Sendable {
         }
     }
 
+    /// Asks the strap to replay stored motion. WHOOP 5 / MG does not stream live IMU.
+    /// The stored seconds arrive as historical layout-21 frames and are decoded into `imuSamples()`.
+    /// This does not acknowledge the chunk, so the strap keeps the records for the official app.
+    public func requestStoredMotion() async throws {
+        try await performOnBleQueue { [self] in
+            guard self.connectionManager.cmdCharacteristic != nil else {
+                throw WhoopBleError.notReady(
+                    state: WhoopBleClientState(self.connectionManager.state)
+                )
+            }
+            guard self.connectionManager.startStreaming() else {
+                throw WhoopBleError.notReady(
+                    state: WhoopBleClientState(self.connectionManager.state)
+                )
+            }
+            self.isImuStreaming = true
+            self.connectionManager.writeToStrap(
+                WhoopBleFrameParser.buildCommandData(
+                    command: WhoopBleConstants.commandSendHistoricalData,
+                    parameters: [0x00]
+                )
+            )
+            self.watchdog.start()
+        }
+    }
+
     /// Stops active realtime and IMU streams while keeping the strap connected.
     public func stopStreaming() async {
         await withCheckedContinuation { continuation in

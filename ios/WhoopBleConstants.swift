@@ -90,6 +90,7 @@ enum WhoopBleConstants {
 
     static let commandGetHello: UInt8 = 0x91
     static let commandToggleRealtimeHr: UInt8 = 0x03
+    static let commandSendHistoricalData: UInt8 = 0x16
     static let commandStartRawData: UInt8 = 0x51
     static let commandStopRawData: UInt8 = 0x52
     static let commandToggleImuModeHistorical: UInt8 = 0x69

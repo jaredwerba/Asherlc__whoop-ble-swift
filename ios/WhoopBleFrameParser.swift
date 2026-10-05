@@ -279,10 +279,12 @@ final class WhoopBleFrameParser {
             return samples
         }
 
-        // R21 Maverick raw packet (type 0x2B, record type 21)
-        // Payload is ~1232-1236 bytes (depending on whether CRC32 is included).
-        // Need at least 1032 + 200 = 1232 bytes for the gyroscope Z array.
-        if frame.packetType == WhoopBleConstants.packetTypeRealtimeRawData &&
+        // Columnar 100 Hz, 6-axis second.
+        // WHOOP 4 sends this as realtime raw 0x2B record 21.
+        // WHOOP 5 / MG sends the same column layout as historical 0x2F layout version 21
+        // (1244-byte frame). Live TOGGLE_IMU_MODE acks and does not stream on that strap.
+        if (frame.packetType == WhoopBleConstants.packetTypeRealtimeRawData ||
+            frame.packetType == WhoopBleConstants.packetTypeHistoricalData) &&
            frame.recordType == 21 &&
            payload.count >= 1232 {
 
@@ -450,17 +452,20 @@ final class WhoopBleFrameParser {
     ///
     /// - Header CRC16: CRC16-MODBUS of the first 6 header bytes
     /// - Payload CRC32: IEEE 802.3 CRC32 of the command bytes (excluding the CRC32 itself)
-    static func buildCommandData(command: UInt8) -> Data {
+    static func buildCommandData(
+        command: UInt8,
+        parameters: [UInt8] = [0x01, 0x01, 0x00, 0x00, 0x00]
+    ) -> Data {
         let seq = commandSequence
         commandSequence &+= 1
 
-        // Command bytes (before CRC32)
+        // Command bytes (before CRC32). The default parameters match TOGGLE_IMU_MODE.
+        // SEND_HISTORICAL_DATA must be [0x00]; the five-byte toggle parameters make that command ack and send nothing.
         let commandBytes = Data([
             WhoopBleConstants.packetTypeCommand,  // 0x23
             seq,
             command,
-            0x01, 0x01, 0x00, 0x00, 0x00,        // parameters
-        ])
+        ] + parameters)
 
         // Payload = command bytes + CRC32 trailer
         let payloadCrc = crc32ieee(commandBytes)

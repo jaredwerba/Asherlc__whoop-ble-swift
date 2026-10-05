@@ -139,6 +139,30 @@ final class WhoopBleFrameParserTests: XCTestCase {
         XCTAssertEqual(samples[1].gyroscopeZ, 60 * gyroScale, accuracy: 0.0001)
     }
 
+    func testExtractImuSamplesFromWhoop5StoredSecond() {
+        var payload = Data(count: 1236)
+        payload[0] = WhoopBleConstants.packetTypeHistoricalData
+        payload[1] = 21
+        writeInt16LE(&payload, offset: 16, value: 100)
+        writeInt16LE(&payload, offset: 622, value: 100)
+        writeInt16LE(&payload, offset: 20, value: 4096)
+        writeInt16LE(&payload, offset: 220, value: 0)
+        writeInt16LE(&payload, offset: 420, value: 0)
+
+        let frame = WhoopFrame(
+            packetType: WhoopBleConstants.packetTypeHistoricalData,
+            recordType: 21,
+            dataTimestamp: 1_700_000_000,
+            subSeconds: 0,
+            payload: payload
+        )
+        let samples = WhoopBleFrameParser.extractImuSamples(from: frame)
+        XCTAssertEqual(samples.count, 100)
+        XCTAssertEqual(samples[0].accelerometerX, 1, accuracy: 0.0001)
+        XCTAssertEqual(samples[0].accelerometerY, 0, accuracy: 0.0001)
+        XCTAssertEqual(samples[0].accelerometerZ, 0, accuracy: 0.0001)
+    }
+
     func testExtractImuSamplesFromHistoricalIMU() {
         var payload = Data(count: 28 + 12)
         payload[0] = WhoopBleConstants.packetTypeHistoricalIMU
