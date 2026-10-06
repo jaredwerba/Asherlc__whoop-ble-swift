@@ -284,6 +284,21 @@ public final class WhoopBleClient: @unchecked Sendable {
         }
     }
 
+    /// Plays the WHOOP 5 / MG notify buzz, then sends stop so the motor runs for about two seconds.
+    /// The strap's buzz command takes a pattern, not a millisecond duration. Stop is what bounds it.
+    public func buzz(seconds: TimeInterval = 2) async throws {
+        try await writeCommand(
+            WhoopBleConstants.commandRunHapticPatternMaverick,
+            parameters: WhoopBleConstants.maverickBuzzParameters
+        )
+        let pause = max(0, seconds)
+        try await Task.sleep(nanoseconds: UInt64(pause * 1_000_000_000))
+        try? await writeCommand(
+            WhoopBleConstants.commandStopHaptics,
+            parameters: [0x01]
+        )
+    }
+
     /// Asks the strap to replay stored motion. WHOOP 5 / MG does not stream live IMU.
     /// The stored seconds arrive as historical layout-21 frames and are decoded into `imuSamples()`.
     /// This does not acknowledge the chunk, so the strap keeps the records for the official app.
@@ -344,6 +359,22 @@ public final class WhoopBleClient: @unchecked Sendable {
                 commandFrameParser.reset()
                 continuation.resume()
             }
+        }
+    }
+
+    private func writeCommand(_ command: UInt8, parameters: [UInt8]) async throws {
+        try await performOnBleQueue { [self] in
+            guard self.connectionManager.cmdCharacteristic != nil else {
+                throw WhoopBleError.notReady(
+                    state: WhoopBleClientState(self.connectionManager.state)
+                )
+            }
+            self.connectionManager.writeToStrap(
+                WhoopBleFrameParser.buildCommandData(
+                    command: command,
+                    parameters: parameters
+                )
+            )
         }
     }
 

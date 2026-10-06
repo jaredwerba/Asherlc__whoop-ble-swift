@@ -97,6 +97,15 @@ enum WhoopBleConstants {
     static let commandToggleImuMode: UInt8 = 0x6A
     static let commandToggleOpticalMode: UInt8 = 0x6C
     static let commandSendR10R11Realtime: UInt8 = 0x3F
+    /// WHOOP 5 / MG haptic. Opcode 0x4F is the 4.0 buzz and a 5.0 strap rejects it.
+    static let commandRunHapticPatternMaverick: UInt8 = 0x13
+    /// Cancels a buzz that is still playing. Sent after the requested duration.
+    static let commandStopHaptics: UInt8 = 0x7A
+    /// Notify pattern used by the official app: revision, effects 47 and 152, one loop.
+    /// The final 0 pads the command record to a multiple of 4 before the CRC32.
+    static let maverickBuzzParameters: [UInt8] = [
+        0x01, 47, 152, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+    ]
 
     /// CMD_FROM_STRAP characteristic (notify): suffix 0003
     static func cmdFromStrapUUID(forService serviceUUID: CBUUID) -> CBUUID {
